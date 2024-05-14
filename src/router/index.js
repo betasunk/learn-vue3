@@ -1,11 +1,32 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+const Recommend = () => import('@/views/recommend.vue' /* webpackChunkName: "recommend" */)
+const Singer = () => import('@/views/singer.vue' /* webpackChunkName: "singer" */)
+const TopList = () => import('@/views/top-list.vue' /* webpackChunkName: "top-list" */)
+const Search = () => import('@/views/search.vue' /* webpackChunkName: "search" */)
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: ''
+      redirect: '/recommend'
+    },
+    {
+      path: '/recommend',
+      component: Recommend
+    },
+    {
+      path: '/singer',
+      component: Singer
+    },
+    {
+      path: '/top-list',
+      component: TopList
+    },
+    {
+      path: '/search',
+      component: Search
     }
     // {
     //   path:'',

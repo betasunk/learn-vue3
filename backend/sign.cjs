@@ -22,6 +22,7 @@
       return (((n >> 16) + (t >> 16) + (o >> 16)) << 16) | (65535 & o)
     }
     function r(n, t, o, e, u, p) {
+      var i, r
       return l(((i = l(l(t, n), l(e, p))) << (r = u)) | (i >>> (32 - r)), o)
     }
     function g(n, t, o, e, u, p, i) {

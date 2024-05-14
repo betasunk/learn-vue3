@@ -1,0 +1,7 @@
+{
+  "babelConfig": {
+    "babelrc": false,
+    "configFile": false,
+    "plugins": ["@vue/babel-plugin-jsx"]
+  }
+}

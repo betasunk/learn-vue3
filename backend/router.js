@@ -2,11 +2,16 @@
  * 该文件是运行在 Node.js 端的，获取数据的基本的思路就是后端代理，即提供接口路由供前端页面使用，然后在路由内部，我们接收到前端请求后，再发送 HTTP 请求到第三方服务接口，携带相应的请求参数，包括签名的参数字段等等。
  * 对于从第三方接口返回的数据，我们会做一层数据处理，最终提供给前端的数据前端可以直接使用，无需再处理。这样也比较符合真实企业项目的开发规范，即数据的处理放在后端做，前端只做数据渲染和交互。
  */
-const axios = require('axios')
-const pinyin = require('pinyin')
-const Base64 = require('js-base64').Base64
+import axios from 'axios'
+import { Base64 } from 'js-base64'
+import pinyin from 'pinyin'
+// const pinyin = require('pinyin')
+// const Base64 = require('js-base64').Base64
 // 获取签名方法
-const getSecuritySign = require('./sign')
+// eslint-disable-next-line no-undef
+// import getSecuritySign from './sign.js'
+// eslint-disable-next-line no-undef
+const getSecuritySign = require('./sign.cjs')
 
 const ERR_OK = 0
 const token = 5381
@@ -107,36 +112,27 @@ function mergeSinger(singer) {
 }
 
 // 注册后端路由
-function registerRouter(app) {
+export function registerRouter(app) {
   registerRecommend(app)
-
   registerSingerList(app)
-
   registerSingerDetail(app)
-
   registerSongsUrl(app)
-
   registerLyric(app)
-
   registerAlbum(app)
-
   registerTopList(app)
-
   registerTopDetail(app)
-
   registerHotKeys(app)
-
   registerSearch(app)
 }
 
 // 注册推荐列表接口路由
-function registerRecommend(app) {
-  app.get('/api/getRecommend', (req, res) => {
+export async function registerRecommend(app) {
+  app.use('/api/getRecommend', async (req, res) => {
     // 第三方服务接口 url
     const url = 'https://u.y.qq.com/cgi-bin/musics.fcg'
 
     // 构造请求 data 参数
-    const data = JSON.stringify({
+    const params = JSON.stringify({
       comm: { ct: 24 },
       recomPlaylist: {
         method: 'get_hot_recommend',
@@ -149,74 +145,76 @@ function registerRecommend(app) {
     // 随机数值
     const randomVal = getRandomVal('recom')
     // 计算签名值
-    const sign = getSecuritySign(data)
+    const sign = getSecuritySign(params)
 
     // 发送 get 请求
-    get(url, {
+    let response = await get(url, {
       sign,
       '-': randomVal,
-      data
-    }).then((response) => {
-      const data = response.data
-      if (data.code === ERR_OK) {
-        // 处理轮播图数据
-        const focusList = data.focus.data.shelf.v_niche[0].v_card
-        const sliders = []
-        const jumpPrefixMap = {
-          10002: 'https://y.qq.com/n/yqq/album/',
-          10014: 'https://y.qq.com/n/yqq/playlist/',
-          10012: 'https://y.qq.com/n/yqq/mv/v/'
-        }
-        // 最多获取 10 条数据
-        const len = Math.min(focusList.length, 10)
-        for (let i = 0; i < len; i++) {
-          const item = focusList[i]
-          const sliderItem = {}
-          // 单个轮播图数据包括 id、pic、link 等字段
-          sliderItem.id = item.id
-          sliderItem.pic = item.cover
-          if (jumpPrefixMap[item.jumptype]) {
-            sliderItem.link = jumpPrefixMap[item.jumptype] + (item.subid || item.id) + '.html'
-          } else if (item.jumptype === 3001) {
-            sliderItem.link = item.id
-          }
-
-          sliders.push(sliderItem)
-        }
-
-        // 处理推荐歌单数据
-        const albumList = data.recomPlaylist.data.v_hot
-        const albums = []
-        for (let i = 0; i < albumList.length; i++) {
-          const item = albumList[i]
-          const albumItem = {}
-          // 推荐歌单数据包括 id、username、title、pic 等字段
-          albumItem.id = item.content_id
-          albumItem.username = item.username
-          albumItem.title = item.title
-          albumItem.pic = item.cover
-
-          albums.push(albumItem)
-        }
-
-        // 往前端发送一个标准格式的响应数据，包括成功错误码和数据
-        res.json({
-          code: ERR_OK,
-          result: {
-            sliders,
-            albums
-          }
-        })
-      } else {
-        res.json(data)
-      }
+      data: params
     })
+    //  .then((response) => {
+    const data = response.data
+    if (data.code === ERR_OK) {
+      // 处理轮播图数据
+      const focusList = data.focus.data.shelf.v_niche[0].v_card
+      const sliders = []
+      const jumpPrefixMap = {
+        10002: 'https://y.qq.com/n/yqq/album/',
+        10014: 'https://y.qq.com/n/yqq/playlist/',
+        10012: 'https://y.qq.com/n/yqq/mv/v/'
+      }
+      // 最多获取 10 条数据
+      const len = Math.min(focusList.length, 10)
+      for (let i = 0; i < len; i++) {
+        const item = focusList[i]
+        const sliderItem = {}
+        // 单个轮播图数据包括 id、pic、link 等字段
+        sliderItem.id = item.id
+        sliderItem.pic = item.cover
+        if (jumpPrefixMap[item.jumptype]) {
+          sliderItem.link = jumpPrefixMap[item.jumptype] + (item.subid || item.id) + '.html'
+        } else if (item.jumptype === 3001) {
+          sliderItem.link = item.id
+        }
+
+        sliders.push(sliderItem)
+      }
+
+      // 处理推荐歌单数据
+      const albumList = data.recomPlaylist.data.v_hot
+      const albums = []
+      for (let i = 0; i < albumList.length; i++) {
+        const item = albumList[i]
+        const albumItem = {}
+        // 推荐歌单数据包括 id、username、title、pic 等字段
+        albumItem.id = item.content_id
+        albumItem.username = item.username
+        albumItem.title = item.title
+        albumItem.pic = item.cover
+
+        albums.push(albumItem)
+      }
+      // 往前端发送一个标准格式的响应数据，包括成功错误码和数据
+      let resFilter = {
+        code: ERR_OK,
+        result: {
+          sliders,
+          albums
+        }
+      }
+      // next()
+      res.end(JSON.stringify(resFilter))
+    } else {
+      // next()
+      res.end(JSON.stringify(data))
+    }
   })
 }
 
 // 注册歌手列表接口路由
 function registerSingerList(app) {
-  app.get('/api/getSingerList', (req, res) => {
+  app.use('/api/getSingerList', (req, res) => {
     const url = 'https://u.y.qq.com/cgi-bin/musics.fcg'
     const HOT_NAME = '热'
 
@@ -289,14 +287,14 @@ function registerSingerList(app) {
           return a.title.charCodeAt(0) - b.title.charCodeAt(0)
         })
 
-        res.json({
+        res.end({
           code: ERR_OK,
           result: {
             singers: hot.concat(letter)
           }
         })
       } else {
-        res.json(data)
+        res.end(data)
       }
     })
   })
@@ -316,7 +314,7 @@ function registerSingerList(app) {
 
 // 注册歌手详情接口路由
 function registerSingerDetail(app) {
-  app.get('/api/getSingerDetail', (req, res) => {
+  app.use('/api/getSingerDetail', (req, res) => {
     const url = 'https://u.y.qq.com/cgi-bin/musics.fcg'
 
     const data = JSON.stringify({
@@ -358,7 +356,7 @@ function registerSingerDetail(app) {
 // 注册歌曲 url 获取接口路由
 // 因为歌曲的 url 每天都在变化，所以需要单独的接口根据歌曲的 mid 获取
 function registerSongsUrl(app) {
-  app.get('/api/getSongsUrl', (req, res) => {
+  app.use('/api/getSongsUrl', (req, res) => {
     const mid = req.query.mid
 
     let midGroup = []
@@ -437,7 +435,7 @@ function registerSongsUrl(app) {
 
 // 注册歌词接口
 function registerLyric(app) {
-  app.get('/api/getLyric', (req, res) => {
+  app.use('/api/getLyric', (req, res) => {
     const url = 'https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg'
 
     get(url, {
@@ -463,7 +461,7 @@ function registerLyric(app) {
 
 // 注册歌单专辑接口
 function registerAlbum(app) {
-  app.get('/api/getAlbum', (req, res) => {
+  app.use('/api/getAlbum', (req, res) => {
     const data = {
       req_0: {
         module: 'srf_diss_info.DissInfoServer',
@@ -508,7 +506,7 @@ function registerAlbum(app) {
 
 // 注册排行榜接口
 function registerTopList(app) {
-  app.get('/api/getTopList', (req, res) => {
+  app.use('/api/getTopList', (req, res) => {
     const url = 'https://u.y.qq.com/cgi-bin/musics.fcg'
 
     const data = JSON.stringify({
@@ -562,7 +560,7 @@ function registerTopList(app) {
 
 // 注册排行榜详情接口
 function registerTopDetail(app) {
-  app.get('/api/getTopDetail', (req, res) => {
+  app.use('/api/getTopDetail', (req, res) => {
     const url = 'https://u.y.qq.com/cgi-bin/musics.fcg'
     const { id, period } = req.query
 
@@ -611,7 +609,7 @@ function registerTopDetail(app) {
 
 // 注册热门搜索接口
 function registerHotKeys(app) {
-  app.get('/api/getHotKeys', (req, res) => {
+  app.use('/api/getHotKeys', (req, res) => {
     const url = 'https://c.y.qq.com/splcloud/fcgi-bin/gethotkey.fcg'
 
     get(url, {
@@ -641,7 +639,7 @@ function registerHotKeys(app) {
 
 // 注册搜索查询接口
 function registerSearch(app) {
-  app.get('/api/search', (req, res) => {
+  app.use('/api/search', (req, res) => {
     const url = 'https://c.y.qq.com/soso/fcgi-bin/search_for_qq_cp'
 
     const { query, page, showSinger } = req.query
@@ -725,4 +723,4 @@ function registerSearch(app) {
   })
 }
 
-module.exports = registerRouter
+// export default { registerRouter }
