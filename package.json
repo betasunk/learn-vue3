@@ -11,8 +11,11 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@better-scroll/core": "^2.5.1",
+    "@better-scroll/observe-dom": "^2.2.1",
     "@vitejs/plugin-vue-jsx": "^3.1.0",
     "axios": "^1.6.8",
+    "better-scroll": "^2.5.1",
     "element-plus": "^2.7.0",
     "express": "^4.19.2",
     "js-base64": "^3.7.7",
